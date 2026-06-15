@@ -95,7 +95,7 @@ useful_col = cat_cols + num_cols + ["type", target_col]
 # Paramètres de l'ensembling
 num_models = 5      # Le nombre d'experts
 sample_size = 10000 # Taille du sampling pour le bagging
-batch_size = 2**10 # Taille des chunks d'inférence (16384)
+batch_size = 2**10 # Taille des chunks d'inférence (16384) -> jouer dessus pour les questions de mémoire
 
 # Liste pour stocker les résultats de toutes les fenêtres
 all_results = []
@@ -185,7 +185,7 @@ for window_id in range(1, 15):
     cols_finales = ["window_id", "Date"] + useful_col + ["pred_tabICL"]
     all_results.append(df_test[cols_finales])
 
-    nom_fichier_export_provisoire = f"../../Output_ponctual/Seed_{seed}/results_stations_tabICL_window_{window_id}.csv"
+    nom_fichier_export_provisoire = f"../../Output_ponctual/Seed_{seed}/results_stations_type_tabICL_1398/window_{window_id}.csv"
     df_test[cols_finales].to_csv(nom_fichier_export_provisoire, index=False, sep=';')
 
 
