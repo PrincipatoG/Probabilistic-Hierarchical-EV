@@ -19,8 +19,8 @@ library(scales)
 # PARAMETERS
 # =====================================================
 
-results_dir <- "Output_conformal"
-figures_dir <- "Figures_new"
+results_dir <- "Output_conformal/Seed_1"
+figures_dir <- "Figures"
 
 alpha <- 0.1
 
@@ -1120,3 +1120,4 @@ for (nt in node_types) {
   )
   
 }
+
