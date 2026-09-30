@@ -42,14 +42,14 @@ Rscript run_all.R
 
 We copy here the main experimental results from the article:
 
-Validity rates at two coverage levels: the nominal level $1-\alpha=90\%$ and a relaxed level $1-2\alpha=80\%$. 
-Results are grouped by aggregation level and conformal procedure, and reported as mean $\pm 1.96 \times$ standard error.
+Validity rates at two coverage levels: the nominal level 1 − α = 90% and a relaxed level 1 − 2α = 80%.
+Results are grouped by aggregation level and conformal procedure, and reported as mean ± 1.96 × standard error.
 
-| Node type | Level | CP | CP-MNR | CP-MNR Nested$^{\star}$ | Adaptive CP-MNR |
+| Node type | Level | CP | CP-MNR | CP-MNR Nested⋆ | Adaptive CP-MNR |
 |:---|:---:|---:|---:|---:|---:|
-| National | $1-\alpha$ | 40.0% $\pm$ 16.3% | 40.0% $\pm$ 16.3% | **90.0% $\pm$ 10.0%** | 0.0% $\pm$ 0.0% |
-|  | $1-2\alpha$ | **100.0% $\pm$ 0.0%** | **100.0% $\pm$ 0.0%** | **100.0% $\pm$ 0.0%** | **100.0% $\pm$ 0.0%** |
-| Regional | $1-\alpha$ | 51.9% $\pm$ 1.2% | 51.9% $\pm$ 1.2% | **71.2% $\pm$ 1.2%** | 47.8% $\pm$ 0.9% |
-|  | $1-2\alpha$ | 98.8% $\pm$ 0.5% | 98.8% $\pm$ 0.5% | 99.1% $\pm$ 0.5% | **100.0% $\pm$ 0.0%** |
-| Station | $1-\alpha$ | 38.1% $\pm$ 0.4% | 56.2% $\pm$ 0.4% | **73.6% $\pm$ 0.6%** | 57.6% $\pm$ 0.6% |
-|  | $1-2\alpha$ | 67.7% $\pm$ 0.3% | 93.6% $\pm$ 0.3% | 90.8% $\pm$ 0.4% | **98.0% $\pm$ 0.1%** |
+| National | 1 − α | 40.0% ± 16.3% | 40.0% ± 16.3% | **90.0% ± 10.0%** | 0.0% ± 0.0% |
+|  | 1 − 2α | **100.0% ± 0.0%** | **100.0% ± 0.0%** | **100.0% ± 0.0%** | **100.0% ± 0.0%** |
+| Regional | 1 − α | 51.9% ± 1.2% | 51.9% ± 1.2% | **71.2% ± 1.2%** | 47.8% ± 0.9% |
+|  | 1 − 2α | 98.8% ± 0.5% | 98.8% ± 0.5% | 99.1% ± 0.5% | **100.0% ± 0.0%** |
+| Station | 1 − α | 38.1% ± 0.4% | 56.2% ± 0.4% | **73.6% ± 0.6%** | 57.6% ± 0.6% |
+|  | 1 − 2α | 67.7% ± 0.3% | 93.6% ± 0.3% | 90.8% ± 0.4% | **98.0% ± 0.1%** |
