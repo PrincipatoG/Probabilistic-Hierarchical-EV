@@ -24,8 +24,9 @@ pip install -r requirements.txt
 
 The data scrapping rely on a (modified) code from the following [github repository](https://github.com/djordjebatic/GridCharge).
 
->📋 For convenience and reproducibility purpose, the resulting pre-processed dataset is available at **mettre les .csv en ligne**.
-The complete pipeline used to generate the data strongly depends on the configuration of the user: please contact use if you need the associated code.
+For convenience and reproducibility purpose, the resulting pre-processed dataset is available at **mettre les .csv en ligne**.
+
+>📋 The complete pipeline used to generate the data strongly depends on the configuration of the user: please contact use if you need the associated code.
 
 ## Running Experiments
 
