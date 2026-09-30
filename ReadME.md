@@ -1,29 +1,31 @@
-# Probabilistic forecasting of electric vehicle charging in a time-varying hierarchical infrastructure
+# Probabilistic Forecasting of Electric Vehicle Charging in a Time-varying Hierarchical Infrastructure
 
-This repository is the official implement of the article *Probabilistic forecasting of electric vehicle charging in a time-varying hierarchical infrastructure*
+This repository is the official implement of the article *Probabilistic Forecasting of Electric Vehicle Charging in a Time-varying Hierarchical Infrastructure*.
 
 ## Requirements
 
-
 To install the R packages:
 
-```setup
+```bash
 Rscript install_packages.R
 ```
 
->📋  The experiments are run under [R version 3.6.1](https://cran-archive.r-project.org/bin/windows/base/old/3.6.1/).
+>📋  The experiments are primarly run under [R version 4.4.3](https://cran.r-project.org/bin/windows/base/old/4.4.3/).
+
+The experiments also rely on [python version 3.8.18](https://www.python.org/downloads/release/python-3818/).
 
 To install the python packages:
 
-```setup
-Rscript install_packages.R
+```bash
+pip install -r requirements.txt
 ```
-
->📋  The experiments are run under [R version 3.6.1](https://cran-archive.r-project.org/bin/windows/base/old/3.6.1/).
 
 ## Data collection
 
-...
+The data scrapping rely on a (modified) code from the following [github repository](https://github.com/djordjebatic/GridCharge).
+
+>📋 For convenience and reproducibility purpose, the resulting pre-processed dataset is available at **mettre les .csv en ligne**.
+The complete pipeline used to generate the data strongly depends on the configuration of the user: please contact use if you need the associated code.
 
 ## Running Experiments
 
