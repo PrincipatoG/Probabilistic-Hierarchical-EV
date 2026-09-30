@@ -43,7 +43,7 @@ Rscript run_all.R
 We copy here the main experimental results from the article:
 
 Validity rates at two coverage levels: the nominal level $1-\alpha=90\%$ and a relaxed level $1-2\alpha=80\%$. 
-Results are grouped by aggregation level and conformal procedure, and reported as $\operatorname{mean} \pm 1.96 \times \operatorname{standard\ error}$.
+Results are grouped by aggregation level and conformal procedure, and reported as mean $\pm 1.96 \times$ standard\ error$.
 
 | Node type | Level | CP | CP-MNR | CP-MNR Nested$^{\star}$ | Adaptive CP-MNR |
 |:---|:---:|---:|---:|---:|---:|
