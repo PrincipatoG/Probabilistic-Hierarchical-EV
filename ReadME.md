@@ -42,7 +42,7 @@ Rscript run_all.R
 
 We copy here the main experimental results from the article:
 
-Validity rates (proportion of valid pairs (node, window) at two coverage levels: the nominal level 1 − α = 90% and a relaxed level 1 − 2α = 80%.
+Validity rates, i.e., proportion of valid pairs (node, window) at two coverage levels: the nominal level 1 − α = 90% and a relaxed level 1 − 2α = 80%.
 Results are grouped by aggregation level and conformal procedure, and reported as mean ± 1.96 × standard error.
 
 | Node type | Level | CP | CP-MNR | CP-MNR Nested⋆ | Adaptive CP-MNR |
