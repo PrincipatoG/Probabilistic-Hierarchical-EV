@@ -24,7 +24,7 @@ pip install -r python_requirements.txt
 
 The data scrapping rely on a (modified) code from the following [github repository](https://github.com/djordjebatic/GridCharge).
 
-For convenience and reproducibility purpose, the resulting pre-processed datasets can be download from the following GitHub Release : [**Download the dataset**](../../releases/latest/download/Data.zip).
+For convenience and reproducibility purpose, the resulting pre-processed datasets can be found here: [**Download the dataset**](https://github.com/PrincipatoG/AOAS-EV/releases/latest/download/Data.zip).
 
 >📋 The complete pipeline used to generate the data strongly depends on the configuration of the user: please contact me if you need the associated code.
 
