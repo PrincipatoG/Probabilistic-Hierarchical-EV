@@ -1,4 +1,4 @@
-# Probabilistic Forecasting of Electric Vehicle Charging in a Time-varying Hierarchical Infrastructure
+# Probabilistic Forecasting of EV Charging in a Time-varying Hierarchical Infrastructure
 
 This repository is the official implement of the article *Probabilistic Forecasting of Electric Vehicle Charging in a Time-varying Hierarchical Infrastructure*.
 
@@ -117,4 +117,4 @@ Results are grouped by aggregation level and conformal procedure, and reported a
 
 ## Additionnal Code
 
-The code located in ./Additional/ can be used to generate the descriptive figures used in the article.
+The code located in `./Additional/` can be used to generate the descriptive figures used in the article.
