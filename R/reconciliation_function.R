@@ -211,7 +211,7 @@ estimate_inv_sigma_bis <- function(res_nat, res_reg, res_sta){
       dplyr::select(dplyr::all_of(region_levels)) %>%
       as.matrix()
     
-    # STATIONS (spécifique fenêtre)
+    # STATIONS (window-specific)
     err_sta <- res_sta %>%
       dplyr::filter(window_id == i) %>%
       dplyr::filter(Date %in% train_period) %>%

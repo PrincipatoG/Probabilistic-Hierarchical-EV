@@ -14,7 +14,7 @@ library(lars)
 library(slider)
 
 #################################################################################################
-################################### DECOUPAGE TRAIN / TEST / CALIBRATION ########################
+################################### SPLIT TRAIN / TEST / CALIBRATION ########################
 #################################################################################################
 
 generate_rolling_windows_old <- function(SEED = 40) {
@@ -27,43 +27,43 @@ generate_rolling_windows_old <- function(SEED = 40) {
   
   train_duration_days <- as.numeric(first_test_start - first_train_start)
   
-  # Pool de LUNDIS pour la calibration historique
+  # Pool of MONDAYS for historical calibration
   pool_dates <- seq(first_train_start, first_test_start - 21, by = "day")
   mondays    <- pool_dates[wday(pool_dates) == 2]
   
   selected_monday_offsets <- as.numeric(sample(mondays, 20) - first_train_start)
 
-  # Fenêtres de test (tous les 14 jours)
+  # Test windows (every 14 days)
   test_starts <- seq(first_test_start, end_all - 13, by = "14 days")
   
-  # Génération glissante
+  # Rolling generation
   list_of_dfs <- map(test_starts, function(t_start) {
-    t_end <- t_start + 13 # Fin du test (Dimanche en semaine 2)
+    t_end <- t_start + 13 # End of test (Sunday in week 2)
     
     current_train_start <- t_start - train_duration_days
     
     # --- CALIBRATION ---
-    # 20 semaines aléatoires (historiques)
+    # 20 random historical weeks
     calib_hist_starts <- current_train_start + selected_monday_offsets
     
-    # La dernière semaine juste avant le test
-    # (du lundi t-7 au dimanche t-1)
+    # The last week immediately before the test
+    # (from Monday t-7 to Sunday t-1)
     calib_extra_start <- t_start - 7
     
-    # Fusion des points de départ de calibration
+    # Merge calibration start points
     all_calib_starts <- c(calib_hist_starts, calib_extra_start)
     
-    # Génération de toutes les dates de calibration (7 jours par bloc)
+    # Generate all calibration dates (7 days per block)
     all_calib_dates <- map(all_calib_starts, ~ seq(.x, .x + 6, by = "day")) %>% 
       reduce(c)
     
     df <- tibble(Date = seq(current_train_start, t_end, by = "day")) %>%
       mutate(type = case_when(
-        # Test : les 14 jours cibles
+        # Test: the 14 target days
         Date >= t_start & Date <= t_end ~ "test",
-        # Calibration : les blocs de 7 jours identifiés
+        # Calibration: the identified 7-day blocks
         Date %in% all_calib_dates ~ "calibration",
-        # Le reste est du train
+        # The remainder is training data
         TRUE ~ "train"
       ))
     
@@ -150,7 +150,7 @@ generate_rolling_windows <- function(
 }
 
 ##################################################################################################
-#################################### PREPARATION COVARIABLES #####################################
+################################### COVARIABLES PRE-PROCESSING ###################################
 ##################################################################################################
 preparation_data_scotland <- function(dataset){
     df_full <- dataset %>%
@@ -160,7 +160,7 @@ preparation_data_scotland <- function(dataset){
             T_15 = (tmpf_max >= 60), 
             max_paid_cp_30days = if_else(is.na(max_paid_cp_30days), n_cp_paid_lag1, max_paid_cp_30days))
 
-    # ON REMPLIT TOUJOURS LES NA 
+    # FILLING NA VALUES FOR LAGS AND CALCULATED VARIABLES
     df_full <- df_full %>% 
         arrange(Date) %>% 
         mutate(
@@ -180,7 +180,7 @@ preparation_data_regions_stations <- function(dataset, group_col){
 
     df_full <- dataset %>%
         mutate(
-            # VARIABLES DE BASE
+            # BASIC VARIABLES
             Weekday_Holiday_BIS = ifelse(Weekday_Holiday %in% c('Tuesday', 'Wednesday',
                     'Thursday', 'Friday'), "Weekday", Weekday_Holiday),
             T_15 = (tmpf_max >= 60),
@@ -188,16 +188,16 @@ preparation_data_regions_stations <- function(dataset, group_col){
             taux_accelere = Accelere / nbr_cp_infrastructure,
             taux_rapide = (Rapide + UltraRapide) / nbr_cp_infrastructure,
             
-            # TRANSFORMATION LOG 
+            # LOG TRANSFORMATIONS
             log_Consumed_kWh = log1p(Consumed_kWh)
         
         ) %>%
   
-        # REMPLISSAGE DES NA
+        # FILLING NA
         arrange({{group_col}}, Date) %>% 
         group_by({{group_col}}) %>%
         mutate(
-            # CONSOMMATIONS DE BASE
+            # BASIC CONSUMPTION
             across(starts_with("Consumed_kWh_lag_"), 
                    .fns = ~ zoo::na.locf(.x, na.rm = FALSE),
                    .names = "{gsub('Consumed_kWh_lag_', 'Lag', .col)}"),
@@ -214,12 +214,12 @@ preparation_data_regions_stations <- function(dataset, group_col){
         
         ungroup() %>%
 
-        # AJOUT DE COLONNES APRES REMPLISSAGE
+        # NEW COLUMNS AFTER FILLING
         mutate(
-            # REMPLISSAGE NA 
+            # FILLING NA FOR MAX VALUES
             max_paid_cp_30days = if_else(is.na(max_paid_cp_30days), n_cp_paid_lag1, max_paid_cp_30days),
             max_cp_30days = if_else(is.na(max_cp_30days), n_cp_lag1, max_cp_30days),
-            # TAUX
+            # RATES
             taux_cp_paid = n_cp_paid/n_cp,
             taux_cp_paid_lag1 = n_cp_paid_lag1/n_cp_lag1, 
             taux_cp_paid_max30 = max_paid_cp_30days/max_cp_30days,
@@ -237,7 +237,7 @@ preparation_data_regions_stations <- function(dataset, group_col){
     
     col_name <- rlang::as_label(rlang::enquo(group_col)) 
     if(col_name == 'Region'){
-        # AJOUT NORMALISATION
+        # NORMALIZATION
          df_full <- df_full %>% 
             mutate(normalized_max_cp_consumed_kWh = ifelse(max_cp_30days > 0, Consumed_kWh / max_cp_30days, Consumed_kWh)) %>% 
             arrange({{group_col}}, Date) %>% 
@@ -250,7 +250,7 @@ preparation_data_regions_stations <- function(dataset, group_col){
             ungroup() %>%
             mutate(norm_Lag_Mean_1_7 = rowMeans(pick(starts_with("norm_lag_")), na.rm = TRUE))          
         
-        # Ajout latitudes 
+        # latitudes 
          lat_coords <- c( 
             'Shetland Islands' = 60.3,
             'Orkney Islands' = 59.0,

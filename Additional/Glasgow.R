@@ -16,7 +16,7 @@ library(data.table)
 windows <- generate_rolling_windows()
 df_address <- read_csv("Data/dataset_address_main.csv")
 
-df_long <- readRDS("Output/new_reconciled_forecasts.RDS")
+df_long <- readRDS("Output_ponctual/Seed_1/reconciled_forecasts_Combination_Combination_Combination.RDS")
 H <- as.matrix(readRDS("Data/structural.RDS")[,-1])
 stations_glasgow <- which(H[,"Region_Glasgow City"] == 1)
 ids_glasgow  <- as.numeric(sub("Station_", "", colnames(H[,33+stations_glasgow])))

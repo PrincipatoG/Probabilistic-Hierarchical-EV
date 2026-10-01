@@ -48,6 +48,57 @@ mse_global <- function(df, method = "OLS_ref") {
 }
 
 # -----------------------------
+# NMAE
+# -----------------------------
+
+nmae_by_node <- function(df, method = "OLS_ref") {
+  
+  pred_col <- method
+  
+  df %>%
+    group_by(node) %>%
+    summarise(
+      n = sum(!is.na(y) & !is.na(.data[[pred_col]])),
+      nmae = ifelse(
+        n == 0,
+        NA_real_,
+        sum(abs(y - .data[[pred_col]]), na.rm = TRUE) /
+          sum(abs(y), na.rm = TRUE)
+      ),
+      .groups = "drop"
+    )
+}
+
+nmae_by_type <- function(df, method = "OLS_ref") {
+  
+  node_nmae <- nmae_by_node(df, method)
+  
+  node_info <- df %>%
+    distinct(node, node_type)
+  
+  node_nmae <- node_nmae %>%
+    left_join(node_info, by = "node")
+  
+  df %>%
+    group_by(node_type) %>%
+    summarise(
+      nmae = sum(abs(y - .data[[method]]), na.rm = TRUE) /
+        sum(abs(y), na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+nmae_global <- function(df, method = "OLS_ref") {
+  
+  pred_col <- method
+  
+  valid <- !is.na(df$y) & !is.na(df[[pred_col]])
+  
+  sum(abs(df$y[valid] - df[[pred_col]][valid])) /
+    sum(abs(df$y[valid]))
+}
+
+# -----------------------------
 # PROBABILISTIC FORECASTING
 # -----------------------------
 node_metrics <- function(df, min_obs = 14) {
@@ -97,7 +148,7 @@ plot_by_type <- function(df_all, alpha = 0.1, min_obs = 14) {
     
     ggplot() +
       
-      # --- points noeuds (transparents) ---
+      # --- Node points (transparent) ---
       geom_point(
         data = df_n,
         aes(
@@ -110,7 +161,7 @@ plot_by_type <- function(df_all, alpha = 0.1, min_obs = 14) {
         size = 2
       ) +
       
-      # --- points moyens ---
+      # --- Mean points ---
       geom_point(
         data = df_t,
         aes(
@@ -123,18 +174,15 @@ plot_by_type <- function(df_all, alpha = 0.1, min_obs = 14) {
         size = 5
       ) +
       
-      # --- axe coverage ---
       scale_x_continuous(limits = c(0.6, 1)) +
       
-      # --- ligne cible ---
       geom_vline(xintercept = 1 - alpha,
                  linetype = "dashed",
                  color = "black") +
       
-      # --- transparence ---
       scale_alpha(range = c(0.05, 0.2), guide = "none") +
       
-      # --- shapes pleines uniquement ---
+      # --- Filled shapes only ---
       scale_shape_manual(values = c(16, 17, 15, 18, 19, 16, 17, 15, 18, 19)) +
       
       labs(

@@ -1,11 +1,27 @@
+source("R/forecast_function.R")
+source("R/reconciliation_function.R")
+source("R/metric_function.R")
+source("R/conformal_methods.R")
+
+library(argparser)
+library(dplyr)
+library(readr)
+library(stringr)
+library(purrr)
+library(ggplot2)
+library(mgcv)
+library(MASS)
+library(fastmatrix)
+library(Matrix)
+library(RSpectra)
 # -----------------------------
 # METRICS
 # -----------------------------
-df_long <- readRDS("Output_ponctual/Seed_1/reconciled_forecasts_Combination_Combination_Combination.RDS")
+df_long <- readRDS("Output_ponctual/Seed_3/reconciled_forecasts_Combination_Combination_Combination.RDS")
 
 tab_global <- data.frame(
   method = c("Direct", "OLS", "OLS_refined"),
-  MSE = c(
+  mse = c(
     mse_global(df_long, "Direct"),
     mse_global(df_long, "OLS"),
     mse_global(df_long, "OLS_refined")
@@ -34,7 +50,17 @@ tab_node <- bind_rows(
     df$method <- m
     df
   })
-)
+  ) %>% mutate(
+    node_type = case_when(
+    node == "1" ~ "national",
+    # node %in% regional_nodes ~ "regional",
+    node %in% 1:(33) ~ "regional", 
+    TRUE ~ "station"
+    )
+  )
+tab_level <- tab_node %>% group_by(node_type)
+  
+
 methods <- c("Direct", "OLS", "OLS_refined")
 
 metrics_window <- bind_rows(lapply(methods, function(m) {
@@ -42,7 +68,7 @@ metrics_window <- bind_rows(lapply(methods, function(m) {
   df_long %>%
     group_by(window) %>%
     summarise(
-      GMSE = mse_global(cur_data(), m),
+      Gmse = mse_global(cur_data(), m),
       .groups = "drop"
     ) %>%
     mutate(method = m)
@@ -52,7 +78,7 @@ metrics_level_window <- bind_rows(lapply(methods, function(m) {
   df_long %>%
     group_by(window, node_type) %>%
     summarise(
-      GMSE = mse_global(cur_data(), m),
+      Gmse = mse_global(cur_data(), m),
       .groups = "drop"
     ) %>%
     mutate(method = m)
@@ -62,7 +88,7 @@ metrics_level_window <- bind_rows(lapply(methods, function(m) {
 # FIGURES
 # -----------------------------
 
-ggplot(metrics_window, aes(x = method, y = GMSE)) +
+ggplot(metrics_window, aes(x = method, y = Gmse)) +
   
   geom_boxplot(outlier.shape = NA, alpha = 0.2) +
   
@@ -82,12 +108,12 @@ ggplot(metrics_window, aes(x = method, y = GMSE)) +
   
   labs(
     x = "",
-    y = "MSE",
+    y = "mse",
     color = "Window"
   )
 plot_mse_level <- function(df, level_name) {
   
-  ggplot(df, aes(x = method, y = GMSE)) +
+  ggplot(df, aes(x = method, y = Gmse)) +
     
     geom_boxplot(outlier.shape = NA, alpha = 0.2) +
     
@@ -108,7 +134,7 @@ plot_mse_level <- function(df, level_name) {
     labs(
       title = level_name,
       x = "",
-      y = "MSE",
+      y = "mse",
       color = "Window"
     )
 }

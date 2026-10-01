@@ -1,19 +1,20 @@
 #!/usr/bin/env Rscript
 
-source('scripts/pretraitements.R')
-source('scripts/modelisation.R')
+source('Model_training/R/pretraitements.R')
+source('Model_training/R/modelisation.R')
+
 library(argparser)
 
 # inputs
-p <- arg_parser("Script modèles regionaux VE")
+p <- arg_parser("Regional EV models script")
 
-p <- add_argument(p, "--seed",      help="Seed pour la génération des fenêtres", default=40, type="integer")
-p <- add_argument(p, "--input",     help="Chemin du dataset d'entrée",           default="Data/dataset_region_main.csv")
-p <- add_argument(p, "--output",    help="Chemin (prefixe) du fichier de sortie", default="results_new_period/results_regions")
-p <- add_argument(p, "--parallel",  help="Activer le calcul parallèle",          default=TRUE, type="logical")
-p <- add_argument(p, "--type",      help="Type de modèle : global, local ou all", default="global")
-p <- add_argument(p, "--transform", help="Appliquer la transformation log1p ou une normalisation",    default='log')
-p <- add_argument(p, "--lags",      help="Inclure les variables de lags",        default=TRUE, type="logical")
+p <- add_argument(p, "--seed",      help="Seed for generating windows", default=40, type="integer")
+p <- add_argument(p, "--input",     help="Input dataset path",           default="Data/dataset_region_main.csv")
+p <- add_argument(p, "--output",    help="Output file path prefix", default="results_new_period/results_regions")
+p <- add_argument(p, "--parallel",  help="Enable parallel computation",          default=TRUE, type="logical")
+p <- add_argument(p, "--type",      help="Model type: global, local, or all", default="global")
+p <- add_argument(p, "--transform", help="Apply the log1p transformation or normalization",    default='log')
+p <- add_argument(p, "--lags",      help="Include lag variables",        default=TRUE, type="logical")
 
 argv <- parse_args(p)
 
@@ -25,16 +26,16 @@ type          <- argv$type
 transform     <- tolower(argv$transform)
 lags          <- argv$lags
 
-# Fenêtres 
+# Windows
 mes_fenetres <- generate_rolling_windows(SEED = seed_windows) 
 
 # Dataset
 dataset_regions <- read.csv(raw_data_path) %>%
         mutate(Date = as.Date(Date)) %>% preparation_data_regions_stations(group_col=Region)
 
-# Formules
+# Formulas
 
-# locales
+# locals
 gam_formula="Consumed_kWh ~  Weekday_Holiday_BIS + 
                                 s(Posan, bs='cc') + 
                                 Lag1 + 
@@ -60,7 +61,7 @@ list_local_param = list(gam_formula_local = gam_formula,
                         rf_formula_local = rf_formula,
                         mes_variables_local = mes_variables)
 
-# globales
+# globals
 if(transform == 'log'){
     if(lags){
         gam_formula= "log_Consumed_kWh ~  Weekday_Holiday_BIS + 
@@ -250,12 +251,12 @@ if(transform == 'norm'){
 } 
 
 
-# Parametrisation du calcul
+# Parameters selection based on type
 switch(type,
   "local"  = { list_global_param <- NULL },
   "global" = { list_local_param <- NULL },
   "all"    = { }, 
-  stop("Type inconnu : doit être local, global ou all")
+    stop("Unknown type: must be local, global, or all")
 )
 
 # Run 

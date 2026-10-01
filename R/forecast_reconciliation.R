@@ -28,8 +28,8 @@ p <- arg_parser("Hierarchical forecast reconciliation")
 
 p <- add_argument(p, 
                   "--seed", 
-                  help="Seed pour la génération des fenêtres", 
-                  default=40, 
+                  help="Seed for generating windows", 
+                  default=1, 
                   type="integer")
 
 p <- add_argument(
@@ -193,12 +193,12 @@ if (run_gather) {
     "GLOBAL_RF",
     "GLOBAL_XGB",
     "GLOBAL_GAM",
-    "TabICL"
+    "tabICL"
   )
   
   available_cols <- intersect(
     forecast_cols,
-    names(res_sta)   # ou res_reg / res_nat
+    names(res_sta)   # or res_reg / res_nat
   )
   
   res_sta$Combination <- rowMeans(
@@ -238,12 +238,13 @@ if (run_gather) {
     "GLOBAL_RF",
     "GLOBAL_XGB",
     "GLOBAL_GAM",
-    "TabICL"
+    "tabICL",
+    "LOCAL_RF"
   )
   
   available_cols <- intersect(
     forecast_cols,
-    names(res_reg)   # ou res_reg / res_nat
+    names(res_reg)   # or res_reg / res_nat
   )
   
   res_reg$Combination <- rowMeans(
@@ -279,15 +280,16 @@ if (run_gather) {
   
   forecast_cols <- c(
     "LOCAL_GAM",
+    "LOCAL_RF",
     "GLOBAL_RF",
     "GLOBAL_XGB",
     "GLOBAL_GAM",
-    "TabICL"
+    "tabICL"
   )
   
   available_cols <- intersect(
     forecast_cols,
-    names(res_nat)   # ou res_reg / res_nat
+    names(res_nat)   # or res_reg / res_nat
   )
   
   res_nat$Combination <- rowMeans(

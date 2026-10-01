@@ -12,7 +12,7 @@ import itertools
 import statsmodels.api as sm
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
-# Import torch et configuration pour MPS (Metal Performance Shaders)
+# Import torch and configure MPS (Metal Performance Shaders)
 import torch
 import torch.nn as nn
 import torch.optim
@@ -33,13 +33,13 @@ random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 
-# Détection de la puce Apple Silicon (MPS)
+# Detect Apple Silicon chip (MPS)
 if torch.backends.mps.is_available():
     device = torch.device("mps")
-    print("🚀 GPU MPS détecté. PyTorch utilisera la puce Apple Silicon.")
+    print("🚀 MPS GPU detected. PyTorch will use the Apple Silicon GPU.")
 else:
     device = torch.device("cpu")
-    print("⚠️ GPU MPS non détecté. Utilisation du CPU.")
+    print("⚠️ MPS GPU not detected. Using CPU.")
 
 # Time series
 from statsmodels.tsa.arima.model import ARIMA
@@ -47,7 +47,7 @@ from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import root_mean_squared_error as rmse
 
 def nrmse(actual, predicted):
-    # Convertit en tableaux numpy pour pouvoir faire des opérations vectorielles
+    # Convert to numpy arrays for vectorized operations
     actual = np.asarray(actual)
     predicted = np.asarray(predicted)
     
@@ -60,7 +60,7 @@ def nrmse(actual, predicted):
     return n_rmse_val
 
 def nmae(actual, predicted):
-    # Convertit en tableaux numpy pour les calculs vectoriels
+    # Convert to numpy arrays for vectorized calculations
     actual = np.asarray(actual)
     predicted = np.asarray(predicted)
     
@@ -78,13 +78,13 @@ from tabicl import TabICLClassifier, TabICLRegressor
 
 os.chdir(f'Data/Seed_{seed}')
 
-# 1. Chargement des données 
-print("Chargement des données historiques...")
+# 1. Load data
+print("Loading historical data...")
 Data0 = pd.read_csv('dataset_stations_for_tab.csv', on_bad_lines='warn', sep=';')
 Data0['Date'] = pd.to_datetime(Data0['Date'])
-print(f"Nombre de lignes dans Data0: {len(Data0)}")
+print(f"Number of rows in Data0: {len(Data0)}")
 
-# Définition des colonnes
+# Define columns
 cat_cols = ['Weekday_Holiday_BIS', 'Region', 'Station.ID']
 num_cols = ['Posan', 'tmpf_max', 'Latitude', 'relh_mean', 'max_cp_30days', 'taux_cp_paid_max30',
             'taux_lent', 'taux_rapide', 'taux_accelere', 'Lag_Mean_1_7', 'n_cp_lag1', 'Lag7', 'Lag1']
@@ -92,34 +92,34 @@ num_cols = ['Posan', 'tmpf_max', 'Latitude', 'relh_mean', 'max_cp_30days', 'taux
 target_col = 'Consumed_kWh'
 useful_col = cat_cols + num_cols + ["type", target_col]
 
-# Paramètres de l'ensembling
-num_models = 5      # Le nombre d'experts
-sample_size = 10000 # Taille du sampling pour le bagging
-batch_size = 2**10 # Taille des chunks d'inférence (16384) -> jouer dessus pour les questions de mémoire
+# Ensembling parameters
+num_models = 5      # Number of experts
+sample_size = 10000 # Sampling size for bagging
+batch_size = 2**10 # Inference chunk size (1024); adjust for memory constraints
 
-# Liste pour stocker les résultats de toutes les fenêtres
+# List to store results for all windows
 all_results = []
 
-# 2. Boucle sur les fenêtres de 1 à 26
+# 2. Loop over windows 1 to 26
 for window_id in range(1, 15):
     window_path = f"my_windows/window_{window_id}.csv"
 
-    # Vérification si le fichier existe
+    # Check whether the file exists
     if not os.path.exists(window_path):
-        print(f"Fichier {window_path} introuvable, passage à la suite.")
+        print(f"File {window_path} not found. Skipping.")
         continue
 
     print(f"\n=======================================================")
-    print(f"--- Traitement de la Window {window_id} ---")
+    print(f"--- Processing Window {window_id} ---")
 
-    # Chargement et fusion
+    # Load and merge
     Window = pd.read_csv(window_path)
     Window["Date"] = pd.to_datetime(Window["Date"])
 
     df_fusionne = pd.merge(Data0, Window, on="Date", how="right")
 
-    # Nettoyage des valeurs manquantes
-    # On garde 'Date' pour l'export final
+    # Clean missing values
+    # Keep 'Date' for the final export
     df_propre = df_fusionne[["Date"] + useful_col].dropna().copy()
 
     # Split Train / Test
@@ -131,57 +131,57 @@ for window_id in range(1, 15):
     y_test = df_fusionne.loc[~(df_fusionne['type'] =='train'), target_col].copy()
 
 
-    # Si pas de données de test pour cette fenêtre, on passe à la suivante
+    # Skip the window if it has no test data
     if X_test.empty:
-        print(f"Pas de lignes 'test' pour la Window {window_id}, passage à la suite.")
+        print(f"No test rows in Window {window_id}. Skipping.")
         continue
 
     X_test.columns = [str(c) for c in X_test.columns]
 
-    # --- DÉBUT DE L'ENSEMBLING POUR CETTE FENÊTRE ---
+    # --- START ENSEMBLING FOR THIS WINDOW ---
     all_predictions = []
     
     for i in range(num_models):
-        print(f"  -> Entraînement du modèle {i+1}/{num_models} (Window {window_id})...")
+        print(f"  -> Training model {i+1}/{num_models} (Window {window_id})...")
         
-        # 1. Échantillonnage aléatoire
+        # 1. Random sampling
         train_sample = df_train_full.sample(n=sample_size, random_state=42 + i)
         X_train_sub = train_sample[cat_cols + num_cols].copy()
         y_train_sub = train_sample[target_col].copy()
         
         X_train_sub.columns = [str(c) for c in X_train_sub.columns]
         
-        # 2. Initialisation du modèle
+        # 2. Initialize model
         reg = TabICLRegressor(verbose=False, random_state=30 + i, n_estimators=1, device=device)
         
-        # 3. Entraînement
+        # 3. Training
         reg.fit(X_train_sub, y_train_sub.values.ravel())
         
-        # 4. Inférence (par batch pour éviter les pb de RAM)
+        # 4. Inference (batched to avoid RAM issues)
         pred_tabICL = []
-        for j in tqdm(range(0, len(X_test), batch_size), desc="     Prédiction", leave=False):
+        for j in tqdm(range(0, len(X_test), batch_size), desc="     Prediction", leave=False):
             X_batch = X_test.iloc[j:j+batch_size]
             batch_preds = reg.predict(X_batch)
             pred_tabICL.extend(batch_preds)
             
-        # Ajout des prédictions à notre ensemble
+        # Add predictions to the ensemble
         all_predictions.append(pred_tabICL)
         
-        # Vidage du cache GPU entre chaque modèle
+        # Clear GPU cache between models
         if torch.backends.mps.is_available():
             torch.mps.empty_cache()
 
-    # 5. Ensembling : Moyenne des prédictions pour cette fenêtre
+    # 5. Ensembling: average predictions for this window
     ensemble_preds = np.mean(all_predictions, axis=0)
-    # --- FIN DE L'ENSEMBLING ---
+    # --- END ENSEMBLING ---
 
-    # On prépare le DataFrame final pour cette fenêtre
+    # Prepare the final DataFrame for this window
     is_train = df_fusionne["type"] == "train"  
     df_test = df_fusionne.loc[~is_train].copy()
     df_test["pred_tabICL"] = ensemble_preds
     df_test["window_id"] = window_id
 
-    # Organisation des colonnes pour le rendu
+    # Arrange columns for output
     cols_finales = ["window_id", "Date"] + useful_col + ["pred_tabICL"]
     all_results.append(df_test[cols_finales])
 
@@ -190,21 +190,21 @@ for window_id in range(1, 15):
 
 
 
-# 3. Fusion de toutes les fenêtres et export en CSV
+# 3. Merge all windows and export to CSV
 if all_results:
     df_final = pd.concat(all_results, ignore_index=True)
 
-    # Exportation en fichier CSV
+    # Export to CSV
     nom_fichier_export = f"../../Output_ponctual/Seed_{seed}/results_stations_tabICL.csv"
     
-    # Création du dossier 'results' s'il n'existe pas déjà
+    # Create the 'results' directory if it does not exist
     os.makedirs(os.path.dirname(nom_fichier_export), exist_ok=True)
     
-    # Export avec séparateur point-virgule
+    # Export with a semicolon separator
     df_final.to_csv(nom_fichier_export, index=False, sep=';')
 
-    print(f"\n### Traitement terminé ! ###")
-    print(f"Le fichier a été exporté sous : {nom_fichier_export}")
-    print(f"Nombre total de lignes de test enregistrées : {len(df_final)}")
+    print(f"\n### Processing completed! ###")
+    print(f"File exported to: {nom_fichier_export}")
+    print(f"Total number of test rows recorded: {len(df_final)}")
 else:
-    print("\nAucune donnée de test n'a pu être traitée.")
+    print("\nNo test data could be processed.")

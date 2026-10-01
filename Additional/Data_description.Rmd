@@ -1,0 +1,372 @@
+---
+title: "Data_description"
+output: html_document
+---
+
+```{r}
+source('../Model_training/R/pretraitements.R')
+source('../Model_training/R/modelisation.R')
+```
+
+```{r}
+library(ggplot2)
+library(scales)
+
+theme_aoas <- function(base_size = 13, base_family = "serif") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      plot.title = element_text(
+        face = "bold",
+        size = rel(1.2),
+        hjust = 0,
+        margin = margin(t = 0, b = 8) 
+      ),
+      plot.subtitle = element_text(
+        size = rel(0.95),
+        color = "grey30"
+      ),
+      axis.title = element_text(
+        face = "bold"
+      ),
+      axis.text = element_text(
+        color = "black"
+      ),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.major.y = element_line(
+        color = "grey85",
+        linewidth = 0.35
+      ),
+      axis.line = element_line(
+        color = "black",
+        linewidth = 0.3
+      ),
+      legend.position = "top",
+      legend.title = element_blank(),
+      plot.margin = margin(10, 15, 10, 10)
+    )
+}
+```
+
+
+# Rolling window
+
+```{r}
+library(forcats)
+my_windows <- generate_rolling_windows(SEED = 1)  
+
+df_all <- purrr::imap_dfr(my_windows, ~ mutate(.x, window = .y))
+df_all <- df_all %>%
+  mutate(
+    type = factor(type, levels = c("train", "calibration", "test")),
+    window = factor(window, levels = sort(unique(window)))
+  )
+```
+
+```{r}
+date_min <- min(df_all$Date)
+date_max <- max(df_all$Date)
+
+major_breaks <- seq(date_min, date_max, by = "6 months")
+minor_breaks <- seq(date_min, date_max, by = "14 days")
+```
+
+```{r}
+g <- ggplot(df_all, aes(x = Date, y = fct_rev(window), fill = type)) +
+  
+  geom_tile(
+    height = 0.85,
+    linewidth = 0.2,
+    alpha = 0.9
+  ) +
+  
+  scale_fill_manual(
+    values = c(
+      calibration = "#A3BEDB",
+      train = "#6F93BD",
+      test = "#4A6FA5"
+    ),
+    labels = c(
+      train = "Train",
+      calibration = "Calib",
+      test = "Test"
+    )
+  ) +
+  
+  scale_x_date(
+    breaks = major_breaks,        # visible (6 months)
+    minor_breaks = minor_breaks,  # structure (14 days)
+    date_labels = "%Y-%m",
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  
+  theme_aoas(base_size = 13, base_family = "serif") +
+  
+  theme(
+    # ❌ no visible vertical grid
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    
+    # ❌ no horizontal grid either (clean AOAS)
+    panel.grid.major.y = element_blank(),
+    
+    # ✔️ x ticks only (6 months + implicit structure)
+    axis.ticks.x = element_line(color = "black", linewidth = 0.4),
+    axis.ticks.length.x = unit(2.5, "pt"),
+    
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.y = element_blank(),
+    
+    axis.text.x = element_text(
+      angle = 0,
+      vjust = 0.5,
+      hjust = 0.5,
+      color = "black"
+    ),
+    
+    legend.position = "left",
+    legend.text = element_text(size = 10),
+    
+    plot.margin = margin(5, 10, 5, 10)
+  )
+```
+
+
+```{r}
+ggsave("../Figures/windows.pdf", g, width = 10, height = 2)
+```
+
+
+
+# National data
+
+```{r}
+national_data_path <- "../Data/dataset_scotland_main.csv"
+
+# Dataset
+dataset_scotland <- read.csv(national_data_path) %>% 
+        mutate(Date = as.Date(Date)) %>% preparation_data_scotland()
+print(min(dataset_scotland$Date))
+print(max(dataset_scotland$Date))
+
+```
+
+```{r}
+
+g <- ggplot(dataset_scotland, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Scotland",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+ggsave("../Figures/Scotland_series.pdf", g, width = 5, height = 3)
+
+```
+
+# Glasgow
+
+```{r}
+regional_data_path <- "../Data/dataset_region_main.csv"
+
+# Dataset
+dataset_glasgow<- read.csv(regional_data_path) %>% 
+        mutate(Date = as.Date(Date)) %>% preparation_data_regions_stations(group_col=Region) %>%
+  filter(Region == "Glasgow City")
+```
+
+```{r}
+
+g <- ggplot(dataset_glasgow, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Glasgow",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+g
+ggsave("../Figures/Glasgow_series.pdf", g, , width = 5, height = 2)
+
+```
+
+# Stations
+
+```{r}
+station_data_path <- "../Data/dataset_address_main.csv"
+
+# Dataset
+dataset_stations <- data.table::fread(station_data_path) %>% 
+        mutate(Date = as.Date(Date)) %>% preparation_data_regions_stations(group_col=Station.ID)
+```
+
+```{r}
+stations_glasgow <- dataset_stations %>%
+  filter(Region == "Glasgow City") 
+stations_glasgow <- as.character(unique(stations_glasgow$Station.ID))
+length(stations_glasgow)
+```
+
+```{r}
+stations_stirling <- dataset_stations %>%
+  filter(Region == "Stirling") %>%
+  filter(Address == "Dunblane")
+stations_dunblane <- as.character(unique(stations_stirling$Station.ID))
+length(stations_dunblane)
+```
+```{r}
+
+dataset_station_of_interest <- dataset_stations %>% 
+  filter(Station.ID == 640)
+
+g <- ggplot(dataset_station_of_interest, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Station 640",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+ggsave("../Figures/station_640.pdf", g, width = 5, height = 3)
+```
+
+```{r}
+
+dataset_station_of_interest <- dataset_stations %>% 
+  filter(Station.ID == 410)
+
+g <- ggplot(dataset_station_of_interest, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Station 410",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+ggsave("../Figures/station_410.pdf", g, width = 5, height = 3)
+```
+
+```{r}
+
+dataset_station_of_interest <- dataset_stations %>% 
+  filter(Station.ID == 386)
+
+g <- ggplot(dataset_station_of_interest, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Station 386",
+
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+g
+ggsave("../Figures/station_386.pdf", g, width = 5, height = 3)
+```
+
+```{r}
+
+dataset_station_of_interest <- dataset_stations %>% 
+  filter(Station.ID == 403)
+
+g <- ggplot(dataset_station_of_interest, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Station 403",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+g
+ggsave("../Figures/station_403.pdf", g, width = 5, height = 3)
+```
+
+```{r}
+
+dataset_station_of_interest <- dataset_stations %>% 
+  filter(Station.ID == 406)
+
+g <- ggplot(dataset_station_of_interest, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Station 406",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+g
+ggsave("../Figures/station_406.pdf", g, width = 5, height = 3)
+```
+
+```{r}
+dataset_station_of_interest <- dataset_stations %>% 
+  filter(Station.ID == 395)
+
+g <- ggplot(dataset_station_of_interest, aes(x = Date, y = Consumed_kWh)) +
+  geom_line(
+    linewidth = 0.35,
+    alpha = 0.9
+  ) +
+  scale_y_continuous(
+    labels = comma
+  ) +
+  labs(
+    title = "Station 395",
+    subtitle = "",
+    x = "Date",
+    y = "Consumed kWh"
+  ) +
+  theme_aoas()
+g
+ggsave("../Figures/station_395.pdf", g, width = 5, height = 3)
+```
+

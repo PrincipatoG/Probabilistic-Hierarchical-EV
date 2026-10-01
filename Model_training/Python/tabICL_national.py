@@ -30,7 +30,7 @@ from sklearn.metrics import mean_squared_error
 
 rmse = lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred))
 def nrmse(actual, predicted):
-    # Convertit en tableaux numpy pour pouvoir faire des opérations vectorielles
+    # Convert to numpy arrays for vectorized operations
     actual = np.asarray(actual)
     predicted = np.asarray(predicted)
     
@@ -44,7 +44,7 @@ def nrmse(actual, predicted):
 
 
 def nmae(actual, predicted):
-    # Convertit en tableaux numpy pour les calculs vectoriels
+    # Convert to numpy arrays for vectorized calculations
     actual = np.asarray(actual)
     predicted = np.asarray(predicted)
     
@@ -82,7 +82,7 @@ torch.manual_seed(seed)
 os.chdir(f'Data/Seed_{seed}')
 
 ###########################################################################################
-#######Test sur une window
+#######Test on one window
 ###########################################################################################
 
 
@@ -129,14 +129,14 @@ print(f"#########################################OFFline TabICL RMSE: {score_nma
 
 
 ###########################################################################################
-#######boucle sur les windows
+#######Loop over windows
 ###########################################################################################
 
-# 1. Chargement des données historiques (hors boucle car fixe)
+# 1. Load historical data (fixed, outside the loop)
 Data0 = pd.read_csv("dataset_scotland_for_tab.csv")
 Data0["Date"] = pd.to_datetime(Data0["Date"])
 
-# Définition des colonnes
+# Define columns
 cat_cols = ["Weekday_Holiday_BIS"]
 num_cols = [
     "Posan",
@@ -150,88 +150,88 @@ num_cols = [
 target_col = "Consumed_kWh"
 useful_col = cat_cols + num_cols + ["type", target_col]
 
-# Liste pour stocker les résultats de chaque fenêtre
+# List to store results for each window
 all_results = []
 
-# 2. Boucle sur les fenêtres de 1 à 14
+# 2. Loop over windows 1 to 14
 for i in range(1, 15):
     window_path = f"my_windows/window_{i}.csv"
 
-    # Vérification si le fichier existe
+    # Check whether the file exists
     if not os.path.exists(window_path):
-        print(f"Fichier {window_path} introuvable, passage à la suite.")
+        print(f"File {window_path} not found. Skipping.")
         continue
 
-    print(f"--- Traitement de la Window {i} ---")
+    print(f"--- Processing Window {i} ---")
 
-    # Chargement et fusion
+    # Load and merge
     Window = pd.read_csv(window_path)
     Window["Date"] = pd.to_datetime(Window["Date"])
 
-    # On inclut 'Date' dans la fusion pour pouvoir la garder dans le CSV final si besoin
+    # Include 'Date' in the merge so it can be kept in the final CSV if needed
     df_fusionne = pd.merge(Data0, Window, on="Date", how="right")
 
-    # On garde TOUTES les lignes
+    # Keep ALL rows
     df_all = df_fusionne[["Date"] + useful_col].copy()
     
-    # On crée une version propre uniquement pour le fit/predict
+    # Create a clean version for fit/predict only
     df_propre = df_all.dropna().copy()
     
-    # Train sur lignes complètes
+    # Train on complete rows
     is_train = df_propre["type"] == "train"
     X_train = df_propre.loc[is_train, cat_cols + num_cols].copy()
     y_train = df_propre.loc[is_train, target_col].copy()
     
-    # Test uniquement sur lignes complètes
+    # Test only on complete rows
     X_test = df_propre.loc[~is_train, cat_cols + num_cols].copy()
 
-    # Si pas de données de test pour cette fenêtre, on passe à la suivante
+    # Skip the window if it has no test data
     if X_test.empty:
-        print(f"Pas de lignes 'test' pour la Window {i}, passage à la suite.")
+        print(f"No test rows in Window {i}. Skipping.")
         continue
 
     X_train.columns = [str(c) for c in X_train.columns]
     X_test.columns = [str(c) for c in X_test.columns]
 
-    # Entraînement et Prédiction
+    # Training and prediction
     reg = TabICLRegressor(verbose=False, random_state=30, n_estimators=10)
     reg.fit(X_train, y_train.values.ravel())
 
-    # On ne filtre QUE le test pour le résultat final de cette fenêtre
-    # On garde TOUTES les lignes test, même avec NA
+    # Filter ONLY the test set for this window's final result
+    # Keep ALL test rows, including rows with NA
     df_test = df_all.loc[df_all["type"] != "train"].copy()
     
-    # Initialisation des prédictions à NA
+    # Initialize predictions with NA
     df_test["pred_tabICL"] = np.nan
     
-    # Lignes complètes dans le test
+    # Complete rows in the test set
     mask_complete = df_test[cat_cols + num_cols].notna().all(axis=1)
     
-    # Prédictions seulement là où c'est possible
+    # Predictions only where possible
     X_pred = df_test.loc[mask_complete, cat_cols + num_cols].copy()
     X_pred.columns = [str(c) for c in X_pred.columns]
     
     df_test.loc[mask_complete, "pred_tabICL"] = reg.predict(X_pred)
     df_test["window_id"] = i
 
-    # Organisation des colonnes pour le rendu (ID de la fenêtre en premier)
+    # Arrange columns for output (window ID first)
     cols_finales = ["window_id", "Date"] + useful_col + ["pred_tabICL"]
     all_results.append(df_test[cols_finales])
 
-# 3. Fusion de toutes les fenêtres et export en CSV
+# 3. Merge all windows and export to CSV
 if all_results:
     df_final = pd.concat(all_results, ignore_index=True)
 
-    # Exportation en fichier CSV
+    # Export
     nom_fichier_export = f"../../Output_ponctual/Seed_{seed}/results_scotland_tabICL.csv"
     df_final.to_csv(nom_fichier_export, index=False)
 
     print(
-        f"\n### Traitement terminé ! Le fichier a été exporté sous : {nom_fichier_export} ###"
+        f"\n### Processing completed! File exported to: {nom_fichier_export} ###"
     )
-    print(f"Nombre total de lignes de test enregistrées : {len(df_final)}")
+    print(f"Total number of test rows recorded: {len(df_final)}")
 else:
-    print("\nAucune donnée de test n'a pu être traitée.")
+    print("\nNo test data could be processed.")
 
 
 

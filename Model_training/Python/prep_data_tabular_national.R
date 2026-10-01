@@ -1,13 +1,15 @@
-source('scripts/pretraitements.R')
-source('scripts/modelisation.R')
-library(argparser)
-# inputs
-p <- arg_parser("Script modèle scotland VE")
+source('Model_training/R/pretraitements.R')
+source('Model_training/R/modelisation.R')
 
-p <- add_argument(p, "--seed",      help="Seed pour la génération des fenêtres", default=40, type="integer")
-p <- add_argument(p, "--input",     help="Chemin du dataset d'entrée",           default="Data/dataset_scotland_main.csv")
-p <- add_argument(p, "--output",    help="Chemin (prefixe) du fichier de sortie", default="results/results_scotland.RDS")
-p <- add_argument(p, "--parallel",  help="Activer le calcul parallèle",          default=TRUE, type="logical")
+library(argparser)
+
+# inputs
+p <- arg_parser("Scotland EV model script")
+
+p <- add_argument(p, "--seed",      help="Seed for generating windows", default=40, type="integer")
+p <- add_argument(p, "--input",     help="Input dataset path",           default="Data/dataset_scotland_main.csv")
+p <- add_argument(p, "--output",    help="Output file path prefix", default="results/results_scotland.RDS")
+p <- add_argument(p, "--parallel",  help="Enable parallel computation",          default=TRUE, type="logical")
 
 argv <- parse_args(p)
 
@@ -16,7 +18,7 @@ raw_data_path <- argv$input
 output_path   <- argv$output
 bool_parallel <- argv$parallel
 
-# Fenêtres 
+# Windows
 my_windows <- generate_rolling_windows(SEED = seed_windows)  
 
 # Dataset

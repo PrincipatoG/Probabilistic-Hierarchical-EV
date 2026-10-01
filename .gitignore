@@ -1,0 +1,15 @@
+# Ignore everything
+*
+
+# Keep the branching
+!*/
+
+# Only allows these file types
+!*.R
+!*.py
+!*.Rmd
+
+# Keep config files
+!.gitignore
+!README.md
+.Rproj.user

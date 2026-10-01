@@ -1,20 +1,21 @@
 #!/usr/bin/env Rscript
 
-source('scripts/pretraitements.R')
-source('scripts/modelisation.R')
+source('Model_training/R/pretraitements.R')
+source('Model_training/R/modelisation.R')
+
 library(argparser)
 
 # inputs
-p <- arg_parser("Script modèles stations VE")
+p <- arg_parser("Station EV models script")
 
-p <- add_argument(p, "--seed", help="Seed pour la génération des fenêtres", default=40, type="integer")
-p <- add_argument(p, "--input", help="Chemin du dataset d'entrée", default="Data/dataset_address_main.csv")
-p <- add_argument(p, "--output", help="Chemin (prefixe) du fichier de sortie", default="results_new_period/results_stations")
-p <- add_argument(p, "--parallel", help="Activer le calcul parallèle", default=TRUE, type="logical")
-p <- add_argument(p, "--type", help="Type de modèle : global, local ou all", default="global")
-p <- add_argument(p, "--lags", help="Inclure les variables de lags", default=TRUE, type="logical")
-p <- add_argument(p, "--max_pct_na", help="Supprimer les séries qui ont trop de NA du train", default=1, type="numeric")
-p <- add_argument(p, "--nbr_series_train", help="Réduire le nombre de séries dans le train",  default=NULL, type="integer")
+p <- add_argument(p, "--seed", help="Seed for generating windows", default=40, type="integer")
+p <- add_argument(p, "--input", help="Input dataset path", default="Data/dataset_address_main.csv")
+p <- add_argument(p, "--output", help="Output file path prefix", default="results_new_period/results_stations")
+p <- add_argument(p, "--parallel", help="Enable parallel computation", default=TRUE, type="logical")
+p <- add_argument(p, "--type", help="Model type: global, local, or all", default="global")
+p <- add_argument(p, "--lags", help="Include lag variables", default=TRUE, type="logical")
+p <- add_argument(p, "--max_pct_na", help="Remove series with too many NAs from training", default=1, type="numeric")
+p <- add_argument(p, "--nbr_series_train", help="Reduce the number of training series",  default=NULL, type="integer")
 
 argv <- parse_args(p)
 
@@ -29,17 +30,16 @@ nbr_series_train <- argv$nbr_series_train
 
 print(nbr_series_train)
 
-# Fenêtres 
+# Windows
 mes_fenetres <- generate_rolling_windows(SEED = seed_windows) 
-# mes_fenetres_new <- generate_rolling_windows(SEED = seed_windows) 
 
 # Dataset
 dataset_stations <- data.table::fread(raw_data_path) %>% 
         mutate(Date = as.Date(Date)) %>% preparation_data_regions_stations(group_col=Station.ID)
 
-# Formules
+# Formulas
 
-# locales
+# locals
 gam_formula="Consumed_kWh ~  Weekday_Holiday_BIS + 
                              s(Posan, bs='cc') +
                              indic_taux_cp_paid_max30 +
@@ -68,7 +68,7 @@ list_local_param = list(gam_formula_local = gam_formula,
                         rf_formula_local = rf_formula,
                         mes_variables_local = mes_variables)
 
-# globales
+# globals
 if(lags){
     gam_formula="log_Consumed_kWh ~  Weekday_Holiday_BIS + 
                                      s(Posan, bs='cc') + 
@@ -138,12 +138,12 @@ list_global_param <- list(gam_formula_global = gam_formula,
                           max_pct_na = max_pct_na,
                           nbr_series_train = nbr_series_train) 
 
-# Parametrisation du calcul
+# Parameters selection based on type
 switch(type,
   "local"  = { list_global_param <- NULL },
   "global" = { list_local_param <- NULL },
   "all"    = { }, 
-  stop("Type inconnu : doit être local, global ou all")
+  stop("Unknown type: must be local, global, or all")
 )
 # Export 
 if(is.na(nbr_series_train)){

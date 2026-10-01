@@ -27,7 +27,7 @@ p <- arg_parser("Conformal prediction experiment")
 
 p <- add_argument(p, 
                   "--seed", 
-                  help="Seed pour la génération des fenêtres", 
+                  help="Seed for generating windows", 
                   default=40, 
                   type="integer")
 

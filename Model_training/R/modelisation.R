@@ -16,19 +16,19 @@ run_all_local_models <- function(dataset,
                                  mes_variables,
                                  return_models = FALSE) {
   
-  # 1. Jointure initiale
+  # 1. Initial join
   df_full <- df_window %>% left_join(dataset, by = 'Date')
   
-  # --- MÉTHODE 1 : ARIMA ---
+  # --- METHOD 1: ARIMA ---
   res_arima <- tryCatch({
     train_vec_clean <- df_full$Consumed_kWh_SARIMA[df_full$type %in% c('train', 'calibration')]
     fit_train <- auto.arima(ts(train_vec_clean, frequency = 7))
     
-    # On applique sur toute la série pour la continuité
+    # Apply to the full series to preserve continuity
     fit_applied <- Arima(df_full$Consumed_kWh_SARIMA, model = fit_train)
     full_preds <- as.numeric(fitted(fit_applied))
     
-    # Filtrage selon le besoin
+    # Filter as needed
     pred_out <- if(!return_models) full_preds[df_full$type != "train"] else full_preds
     
     list(model = fit_train, pred = pred_out, status = "success")
@@ -36,19 +36,19 @@ run_all_local_models <- function(dataset,
     list(model=NULL, pred = rep(NA, if(!return_models) sum(df_full$type != "train") else nrow(df_full)), status = "error")
   }) 
 
-  # --- MÉTHODE 2 : GAM ---
+  # --- METHOD 2: GAM ---
   res_gam <- tryCatch({
     m_gam <- gam(as.formula(gam_formula), 
                  data = df_full %>% filter(type == "train") %>% drop_na(Consumed_kWh, all_of(mes_variables)))
     
-    # Prédiction
+    # Prediction
     data_to_pred <- if(!return_models) df_full %>% filter(type != "train") else df_full
     list(model=m_gam, pred = as.numeric(predict(m_gam, newdata = data_to_pred)), status = "success")
   }, error = function(e){
     list(model=NULL, pred = rep(NA, if(!return_models) sum(df_full$type != "train") else nrow(df_full)), status = "error")
   }) 
 
-  # --- MÉTHODE 3 : RANDOM FOREST (RANGER) ---
+  # --- METHOD 3: RANDOM FOREST (RANGER) ---
   res_rf <- tryCatch({
     rf_fit <- ranger(as.formula(rf_formula), 
                      data = df_full %>% filter(type == "train") %>% drop_na(Consumed_kWh, all_of(mes_variables)), 
@@ -56,15 +56,15 @@ run_all_local_models <- function(dataset,
                      num.threads = 1,
                      importance = 'impurity')
     
-    # Prédiction à la volée sur le subset
+    # On-the-fly prediction on the subset
     data_to_pred <- if(!return_models) df_full %>% filter(type != "train") else df_full
     list(model=rf_fit, pred = predict(rf_fit, data = data_to_pred)$predictions, status = "success")
   }, error = function(e) {
     list(model=NULL, pred = rep(NA, if(!return_models) sum(df_full$type != "train") else nrow(df_full)), status = "error")
   })
 
-  # --- ASSEMBLAGE FINAL ---
-  # On construit le dataframe final en filtrant df_full si return_models est FALSE
+  # --- FINAL ASSEMBLY ---
+  # Build the final data frame by filtering df_full when return_models is FALSE
   df_result <- if(!return_models) df_full %>% filter(type != "train") else df_full
 
   df_result <- df_result %>%
@@ -107,7 +107,7 @@ run_all_global_models <- function(dataset,
   df_full <- df_window %>% left_join(dataset, by = 'Date')
   df_full$type_use <- df_full$type
 
-  # --- SAMPLING AVANT LANCEMENT POUR LES STATIONS : OPTIONNEL --- #
+  # --- SAMPLING BEFORE RUNNING FOR THE STATIONS (OPTIONAL) --- #
   if (!is.null(nbr_series_train) && !is.na(nbr_series_train)){
       set.seed(SEED)
       sample_stations <- dataset %>% 
@@ -124,10 +124,10 @@ run_all_global_models <- function(dataset,
       df_full$type_use[idx_to_change] <- 'test'
   }
 
-  # --- Définition du set de prédiction ---
+  # --- Define the prediction set ---
   df_pred <- if(!return_models) df_full[df_full$type != "train", ] else df_full
 
-  # --- METHODE 1 : GAM ---
+  # --- METHOD 1 : GAM ---
   m_gam <- NULL
   res_gam <- tryCatch({
     m_gam <- bam(as.formula(gam_formula), 
@@ -136,11 +136,11 @@ run_all_global_models <- function(dataset,
                    nthreads = num_threads)
     list(model = m_gam, pred = as.numeric(predict(m_gam, newdata = df_pred)), status = "success") 
   }, error = function(e){
-    message("ERREUR GAM détectée : ", e$message)
+    message("GAM ERROR detected: ", e$message)
     list(model = NULL, pred = rep(NA, nrow(df_pred)), status = "error")}) 
   gc()
 
-  # --- METHODE 2 : RANDOM FOREST ---
+  # --- METHOD 2 : RANDOM FOREST ---
   rf_fit <- NULL
   rf_formula <- as.formula(rf_formula)
   res_rf <- tryCatch({  
@@ -152,11 +152,11 @@ run_all_global_models <- function(dataset,
                        importance = 'impurity')
     list(model = rf_fit, pred = predict(rf_fit, data = df_pred)$predictions, status = "success")
   }, error = function(e) {
-    message("ERREUR RF détectée : ", e$message)
+    message("RF ERROR detected: ", e$message)
     list(model = NULL, pred = rep(NA, nrow(df_pred)), status = "error")})
   gc()
 
-  # --- METHODE 3 : XGBOOST ----
+  # --- METHOD 3 : XGBOOST ----
   xgb_fit <- NULL
   res_xgb <- tryCatch({
     df_train_xgb <- df_full[df_full$type_use == "train", c(target, xgb_var)] %>% drop_na()
@@ -190,10 +190,10 @@ run_all_global_models <- function(dataset,
     rm(full_x_sparse); gc()
     list(model = xgb_fit, pred = preds_finales, status = "success")
   }, error = function(e) {
-    message("ERREUR XGBoost détectée : ", e$message); list(model=NULL, pred = rep(NA, nrow(df_pred)), status = "error")
+    message("XGBoost ERROR detected: ", e$message); list(model=NULL, pred = rep(NA, nrow(df_pred)), status = "error")
   })
 
-  # --- RETOUR FINAL ---
+  # --- FINAL OUTPUT ---
   df_result <- df_pred %>%
     mutate(
       GLOBAL_GAM = res_gam$pred,
@@ -218,14 +218,14 @@ run_all_global_models <- function(dataset,
 
 
 ###################################################################################################
-################################## FONCTIONS MACRO ################################################
+################################## MACRO FUNCTION ################################################
 ###################################################################################################
 
 compute_scotland_forecasts <- function(dataset, windows, param, parallel_run=FALSE){
 
   if(parallel_run){
     n_cores <- parallel::detectCores() - 1
-    message(paste("Lancement du modele national sur", length(windows), "fenetres..."))
+    message(paste("Launching the national model for", length(windows), "windows..."))
       
     results <- parallel::mclapply(windows, function(w) {
       run_all_local_models(dataset, 
@@ -257,13 +257,13 @@ compute_regions_forecasts <- function(dataset,
 
   final_local_df <- NULL
   if(!is.null(local_param)){
-    # --- I. MODELES LOCAUX ---
-    message(paste("Modeles locaux par Region"))
+    # --- I. LOCAL MODELS ---
+    message(paste("Local models by region"))
     split_data <- dataset %>% split(.[['Region']])
     
     if(parallel_run){
       n_cores <- parallel::detectCores() - 1
-      message(paste("Lancement pour", length(split_data), "series", n_cores, "coeurs..."))
+      message(paste("Launching", length(split_data), "series on", n_cores, "cores..."))
       
       local_results <- parallel::mclapply(names(split_data), function(name) {
         entity_data <- split_data[[name]]
@@ -276,7 +276,7 @@ compute_regions_forecasts <- function(dataset,
       
     }, mc.cores = n_cores)
     }else{
-      message(paste("Lancement pour", length(split_data), "series"))
+      message(paste("Launching", length(split_data), "series"))
       
       local_results <- lapply(names(split_data), function(name) {
         entity_data <- split_data[[name]]
@@ -288,18 +288,18 @@ compute_regions_forecasts <- function(dataset,
                       .id = "window_id")})
     }
     
-    # On réassigne les noms des séries avant de fusionner
+    # Reassign series names before merging
     names(local_results) <- names(split_data)
     
-    # Fusion finale de toutes les stations en un seul dataframe géant
+    # Final merge of all stations into one large data frame
     final_local_df <- dplyr::bind_rows(local_results, .id = 'Region')
   }
 
   final_global_df <- NULL
   if(!is.null(global_param)){
 
-      # --- II. MODELES GLOBAUX --- 
-      message(paste("Modeles globaux par Region"))
+      # --- II. GLOBAL MODELS --- 
+      message(paste("Global models by region"))
       num_threads = if(parallel_run) parallel::detectCores() - 1 else 1
 
       n_cores <- parallel::detectCores() - 1
@@ -316,7 +316,7 @@ compute_regions_forecasts <- function(dataset,
                               nbr_series_train = global_param$nbr_series_train,
                               SEED = 40)$all_predict})
       
-      # On réassigne les noms des stations avant de fusionner
+      # Reassign station names before merging
       final_global_df <- dplyr::bind_rows(global_results, .id = "window_id")
   }
   return(list('local' = final_local_df,
@@ -333,23 +333,23 @@ compute_stations_forecasts <- function(dataset,
   
   if(!dir.exists(output_path)) dir.create(output_path, recursive = TRUE)
 
-  # --- I. MODÈLES LOCAUX (Un fichier par fenêtre) ---
+  # --- I. LOCAL MODELS (one file per window) ---
   if(!is.null(local_param)) {
-    message(">>> [LOCAL] Calcul par fenêtres et chunks...")
+    message(">>> [LOCAL] Computing windows and chunks...")
     
     station_ids <- unique(dataset$Station.ID)
-    # Découpage en paquets de 100 stations
+    # Split into batches of 100 stations
     station_chunks <- split(station_ids, ceiling(seq_along(station_ids) / 100))
 
     for(j in seq_along(windows)) {
-      message(paste("   - Fenêtre", j, "/", length(windows)))
+      message(paste("   - Window", j, "/", length(windows)))
       
       for(k in seq_along(station_chunks)) {
-        message(paste("     * Chunk station", k, "/", length(station_chunks)))
+        message(paste("     * Station chunk", k, "/", length(station_chunks)))
         ids_chunk <- station_chunks[[k]]
         
         if(parallel_run) {
-          # Parallélisation par série au sein du chunk
+          # Parallelize by series within the chunk
           res_chunk <- parallel::mclapply(ids_chunk, function(id) {
             entity_data <- dataset[dataset$Station.ID == id, ]
             run_all_local_models(entity_data, windows[[j]], 
@@ -369,27 +369,27 @@ compute_stations_forecasts <- function(dataset,
           })
         }
 
-        # Sélection des colonnes et sauvegarde immédiate du chunk
+        # Select columns and save the chunk immediately
         res_chunk <- res_chunk %>% 
           dplyr::select(Station.ID, Longitude, Latitude, Date, type, Consumed_kWh, starts_with("LOCAL_"))
         
-        # Le nom du fichier inclut la fenêtre ET le chunk
+        # The filename includes both the window and the chunk
         file_name <- paste0("local_win_", j, "_chunk_", k, ".RDS")
         saveRDS(res_chunk, file.path(output_path, file_name))
         
-        # Nettoyage
+        # Cleanup to free memory
         rm(res_chunk); gc()
       }
     }
   }
 
-  # --- II. MODÈLES GLOBAUX --- 
+  # --- II. GLOBAL MODELS ---
   if(!is.null(global_param)) {
-    message(">>> [GLOBAL] Calcul fenêtre par fenêtre...")
+    message(">>> [GLOBAL] Computing window by window...")
 
     num_threads = if(parallel_run) parallel::detectCores() - 1 else 1
     for(j in seq_along(windows)) {
-      message(paste("   - Fenêtre globale", j, "/", length(windows)))
+      message(paste("   - Global window", j, "/", length(windows)))
       res_win <- run_all_global_models(
         dataset = dataset, 
         df_window = windows[[j]], 

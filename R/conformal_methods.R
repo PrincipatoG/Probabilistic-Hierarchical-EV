@@ -385,7 +385,7 @@ CP_MNR_Nested_star <- function(D_calib,
       y_i <- Y[i, ]
       y_i[is.na(y_i)] <- 0
       
-      # score <- P %*% (y_i - Yhat[i, ]) # Attention à cette ligne, je pense que la projection doit être que pour la prévision
+      # score <- P %*% (y_i - Yhat[i, ]) # The projection may apply only to the forecast
       score <-  (y_i - P %*% Yhat[i, ]) 
       score[score == 0] <- NA
       

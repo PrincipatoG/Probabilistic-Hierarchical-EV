@@ -12,7 +12,7 @@ Rscript install_packages.R
 
 >📋  The experiments are primarly run under [R version 4.4.3](https://cran.r-project.org/bin/windows/base/old/4.4.3/).
 
-The experiments also rely on [python version 3.8.18](https://www.python.org/downloads/release/python-3818/).
+The experiments also rely on [Python version 3.11](https://www.python.org/downloads/release/python-31116/).
 
 To install the python packages:
 
@@ -20,7 +20,7 @@ To install the python packages:
 pip install -r python_requirements.txt
 ```
 
-## Data collection
+## Data Collection
 
 The data scrapping rely on a (modified) code from the following [github repository](https://github.com/djordjebatic/GridCharge).
 
@@ -38,6 +38,67 @@ Rscript run_all.R
 
 >📋 This code can be run on a personal computer but actually requires a strong memory capacity (my 36 GB Mac almost took fire at some point). A separate run of a each of its item with well-chosen and device dependant parameters is thus recommended.
 
+### Experiments in Details
+
+The experiments steps can be decomposed as follow:
+
+1. Model training
+
+📊 Code in R: RF, GAM and XGboost 
+```
+Rscript Model_training/R/run_scotland.R
+Rscript Model_training/R/run_regions.R
+Rscript Model_training/R/run_stations.R
+```
+
+🐍 Code in Python: TabICL
+```
+python3.11 Model_training/Python/tabICL_national.py
+python3.11 Model_training/Python/tabICL_regions_GPU.py
+python3.11 Model_training/Python/tabICL_stations_GPU.py
+```
+
+2. Forecast reconciliation (for point forecasting)
+```
+Rscript R/forecast_reconciliation.R
+```
+
+3. Conformal prediction with an integrated reconciliation step
+```
+Rscript R/run_conformal.R
+```
+The available options for `run_conformal.R` are:
+
+| Argument             | Available options              | Description                         |
+| -------------------- | ------------------------------ | ----------------------------------- |
+| `--conformal_method` | `CP_MNR`, `CP_MNR_naive`, `Adaptive_CP_MNR`, `CP_MNR_Nested_star`    | Procedure to perform conformal prediction with a time-varying hierarchical structure                |
+| `--national_model`   | `LOCAL_GAM`, `LOCAL_RF`, `LOCAL_XBG`, `tabICL`, `Combination`        | Forecasting model used at the national level |
+| `--regional_model`   | `GLOBAL_GAM`, `GLOBAL_RF`, `GLOBAL_XGB`, `tabICL`, `Combination`     | Forecasting model used at the regional level (for all nodes) |
+| `--station_model`    | `GLOBAL_GAM`, `GLOBAL_RF`, `GLOBAL_XGB`, `tabICL`, `Combination`     | Forecasting model used at the station level (for all nodes) |
+| `--seed`             | Integer              | Seed used for the experiment                  |
+
+For example, to run the **CP_MNR_Nested_star** conformal procedure with forecasts being the combination of all the forecasting methods:
+
+```bash
+  Rscript R/run_conformal.R ,
+    --conformal_method "CP_MNR_Nested_star",
+    --national_model "Combination",
+    --regional_model "Combination",
+    --station_model "Combination",
+    --seed 1
+```
+
+### From Results to Figures
+
+Four files can be used to get the plot used to illustrate the results of the experiments. 
+Some post-treatment in LaTeX are made from the row ggplot2 figures to obtain *journal-ready* figures.
+```bash
+Rscript R/Figure_Example.R
+Rscript R/Figure_multi_seed.R
+Rscript R/Figure_multi_seed_cond.R
+Rscript R/Figure_multi_seed_ponctual.R
+```
+
 ## Results
 
 We copy here the main experimental results from the article:
@@ -53,3 +114,7 @@ Results are grouped by aggregation level and conformal procedure, and reported a
 |  | 1 − 2α | 98.8% ± 0.5% | 98.8% ± 0.5% | 99.1% ± 0.5% | **100.0% ± 0.0%** |
 | Station | 1 − α | 38.1% ± 0.4% | 56.2% ± 0.4% | **73.6% ± 0.6%** | 57.6% ± 0.6% |
 |  | 1 − 2α | 67.7% ± 0.3% | 93.6% ± 0.3% | 90.8% ± 0.4% | **98.0% ± 0.1%** |
+
+## Additionnal Code
+
+The code located in ./Additional/ can be used to generate the descriptive figures used in the article.
