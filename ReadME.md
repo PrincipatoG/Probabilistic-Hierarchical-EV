@@ -1,6 +1,6 @@
 # Probabilistic Forecasting of EV Charging in a Time-varying Hierarchical Infrastructure
 
-This repository is the official implement of the article *Probabilistic Forecasting of Electric Vehicle Charging in a Time-varying Hierarchical Infrastructure*.
+This repository is the official implementation of the article *Probabilistic Forecasting of Electric Vehicle Charging in a Time-varying Hierarchical Infrastructure*.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ To perform the complete experiment, run this command:
 Rscript run_all.R
 ```
 
->📋 This code can be run on a personal computer but actually requires a strong memory capacity (my 36 GB Mac almost took fire at some point). A separate run of a each of its item with well-chosen and device dependant parameters is thus recommended.
+>📋 **Computational requirement** The code can be run on a personal computer, but requires substantial RAM. For reference, the experiments were run on a Mac with 36 GB of RAM. At some point, the memory usage was close to the available capacity. A separate run of a each of its item with well-chosen and device dependant parameters is thus recommended.
 
 ### Experiments in Details
 
